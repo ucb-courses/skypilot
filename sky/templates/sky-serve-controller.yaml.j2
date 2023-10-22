@@ -16,12 +16,18 @@ file_mounts:
   {{remote_task_yaml_path}}: {{local_task_yaml_path}}
 
 run: |
+  SERVICE_DIR={{metadata_dir}}/$SKYPILOT_INTERNAL_JOB_ID
+  mkdir -p SERVICE_DIR
+  mv {{remote_task_yaml_path}} $SERVICE_DIR/task.yaml
   # Start sky serve service.
   python -u -m sky.serve.service \
+    --service-id $SKYPILOT_INTERNAL_JOB_ID \
+    --service-dir $SERVICE_DIR \
+    --task-yaml $SERVICE_DIR/task.yaml \
+    {% if service_name is not none %}
     --service-name {{service_name}} \
-    --task-yaml {{remote_task_yaml_path}} \
-    --job-id $SKYPILOT_INTERNAL_JOB_ID \
-    > {{controller_log_file}} 2>&1
+    {% endif %}
+    > $SERVICE_DIR/controller.log 2>&1
 
 envs:
 {%- for env_name, env_value in envs.items() %}

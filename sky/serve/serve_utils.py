@@ -179,46 +179,45 @@ class RedirectOutputTo:
             self.func(*args, **kwargs)
 
 
-def generate_remote_service_dir_name(service_name: str) -> str:
-    service_name = service_name.replace('-', '_')
-    return os.path.join(constants.SKYSERVE_METADATA_DIR, service_name)
+def generate_remote_service_dir_name(service_id: int) -> str:
+    return os.path.join(constants.SKYSERVE_METADATA_DIR, service_id)
 
 
-def generate_remote_task_yaml_file_name(service_name: str) -> str:
-    dir_name = generate_remote_service_dir_name(service_name)
+def generate_remote_task_yaml_file_name(service_id: int) -> str:
+    dir_name = generate_remote_service_dir_name(service_id)
     # Don't expand here since it is used for remote machine.
     return os.path.join(dir_name, 'task.yaml')
 
 
-def generate_remote_controller_log_file_name(service_name: str) -> str:
-    dir_name = generate_remote_service_dir_name(service_name)
+def generate_remote_controller_log_file_name(service_id: int) -> str:
+    dir_name = generate_remote_service_dir_name(service_id)
     # Don't expand here since it is used for remote machine.
     return os.path.join(dir_name, 'controller.log')
 
 
-def generate_remote_load_balancer_log_file_name(service_name: str) -> str:
+def generate_remote_load_balancer_log_file_name(service_id: int) -> str:
     dir_name = generate_remote_service_dir_name(service_name)
     # Don't expand here since it is used for remote machine.
     return os.path.join(dir_name, 'load_balancer.log')
 
 
-def generate_replica_launch_log_file_name(service_name: str,
+def generate_replica_launch_log_file_name(service_id: int,
                                           replica_id: int) -> str:
-    dir_name = generate_remote_service_dir_name(service_name)
+    dir_name = generate_remote_service_dir_name(service_id)
     dir_name = os.path.expanduser(dir_name)
     return os.path.join(dir_name, f'replica_{replica_id}_launch.log')
 
 
-def generate_replica_down_log_file_name(service_name: str,
+def generate_replica_down_log_file_name(service_id: str,
                                         replica_id: int) -> str:
-    dir_name = generate_remote_service_dir_name(service_name)
+    dir_name = generate_remote_service_dir_name(service_id)
     dir_name = os.path.expanduser(dir_name)
     return os.path.join(dir_name, f'replica_{replica_id}_down.log')
 
 
-def generate_replica_local_log_file_name(service_name: str,
+def generate_replica_local_log_file_name(service_id: int,
                                          replica_id: int) -> str:
-    dir_name = generate_remote_service_dir_name(service_name)
+    dir_name = generate_remote_service_dir_name(service_id)
     dir_name = os.path.expanduser(dir_name)
     return os.path.join(dir_name, f'replica_{replica_id}_local.log')
 
@@ -251,7 +250,8 @@ def update_service_status() -> None:
         if record['status'] == serve_state.ServiceStatus.SHUTTING_DOWN:
             # Skip services that is shutting down.
             continue
-        controller_status = job_lib.get_status(record['controller_job_id'])
+        # service_id is also the controller job id.
+        controller_status = job_lib.get_status(record['service_id'])
         if controller_status is None or controller_status.is_terminal():
             # If controller job is not running, set it as controller failed.
             serve_state.set_service_status(

@@ -38,11 +38,11 @@ class SkyServeController:
         - Providing the HTTP Server API for SkyServe to communicate with.
     """
 
-    def __init__(self, service_name: str, service_spec: serve.SkyServiceSpec,
+    def __init__(self, service_id: int, service_spec: serve.SkyServiceSpec,
                  task_yaml: str, port: int) -> None:
-        self.service_name = service_name
+        self.service_id = service_id
         self.replica_manager: replica_managers.ReplicaManager = (
-            replica_managers.SkyPilotReplicaManager(service_name,
+            replica_managers.SkyPilotReplicaManager(service_id,
                                                     service_spec,
                                                     task_yaml_path=task_yaml))
         self.autoscaler: autoscalers.Autoscaler = (
@@ -59,7 +59,7 @@ class SkyServeController:
         while True:
             try:
                 replica_info = serve_utils.get_replica_info(
-                    self.service_name,
+                    self.service_id,
                     with_handle=env_options.Options.SHOW_DEBUG_INFO.get())
                 logger.info(f'All replica info: {replica_info}')
                 scaling_option = self.autoscaler.evaluate_scaling(replica_info)
@@ -115,8 +115,8 @@ class SkyServeController:
         uvicorn.run(self.app, host='localhost', port=self.port)
 
 
-def run_controller(service_name: str, service_spec: serve.SkyServiceSpec,
+def run_controller(service_id: int, service_spec: serve.SkyServiceSpec,
                    task_yaml: str, controller_port: int):
-    controller = SkyServeController(service_name, service_spec, task_yaml,
+    controller = SkyServeController(service_id, service_spec, task_yaml,
                                     controller_port)
     controller.run()

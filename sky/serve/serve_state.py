@@ -26,10 +26,11 @@ _DB_PATH = str(_DB_PATH)
 _CONN = sqlite3.connect(_DB_PATH)
 _CURSOR = _CONN.cursor()
 
+# service_id is also the controller job id. It is unique for each service.
 _CURSOR.execute("""\
     CREATE TABLE IF NOT EXISTS services (
-    name TEXT PRIMARY KEY,
-    controller_job_id INTEGER,
+    service_id INTEGER PRIMARY KEY,
+    name TEXT DEFAULT NULL,
     controller_port INTEGER DEFAULT NULL,
     load_balancer_port INTEGER DEFAULT NULL,
     status TEXT,
@@ -39,10 +40,10 @@ _CURSOR.execute("""\
     requested_resources BLOB)""")
 _CURSOR.execute("""\
     CREATE TABLE IF NOT EXISTS replicas (
-    service_name TEXT,
+    service_id INTEGER,
     replica_id INTEGER,
     replica_info BLOB,
-    PRIMARY KEY (service_name, replica_id))""")
+    PRIMARY KEY (service_id, replica_id))""")
 _CONN.commit()
 
 
@@ -169,7 +170,7 @@ _SERVICE_STATUS_TO_COLOR = {
 
 
 # === Service functions ===
-def add_service(name: str, controller_job_id: int, policy: str,
+def add_service(service_id: int, name: Optional[str], policy: str,
                 auto_restart: bool, requested_resources: 'sky.Resources',
                 status: ServiceStatus) -> None:
     """Adds a service to the database."""
@@ -177,66 +178,66 @@ def add_service(name: str, controller_job_id: int, policy: str,
         cursor.execute(
             """\
             INSERT INTO services
-            (name, controller_job_id, status, policy,
+            (service_id, name, status, policy,
             auto_restart, requested_resources)
             VALUES (?, ?, ?, ?, ?, ?)""",
-            (name, controller_job_id, status.value, policy, int(auto_restart),
+            (service_id, name, status.value, policy, int(auto_restart),
              pickle.dumps(requested_resources)))
 
 
-def remove_service(service_name: str) -> None:
+def remove_service(service_id: int) -> None:
     """Removes a service from the database."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         cursor.execute("""\
-            DELETE FROM services WHERE name=(?)""", (service_name,))
+            DELETE FROM services WHERE service_id=(?)""", (service_id,))
 
 
-def set_service_uptime(service_name: str, uptime: int) -> None:
+def set_service_uptime(service_id: int, uptime: int) -> None:
     """Sets the uptime of a service."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         cursor.execute(
             """\
             UPDATE services SET
-            uptime=(?) WHERE name=(?)""", (uptime, service_name))
+            uptime=(?) WHERE service_id=(?)""", (uptime, service_id))
 
 
-def set_service_status(service_name: str, status: ServiceStatus) -> None:
+def set_service_status(service_id: int, status: ServiceStatus) -> None:
     """Sets the service status."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         cursor.execute(
             """\
             UPDATE services SET
-            status=(?) WHERE name=(?)""", (status.value, service_name))
+            status=(?) WHERE service_id=(?)""", (status.value, service_id))
 
 
-def set_service_controller_port(service_name: str,
+def set_service_controller_port(service_id: int,
                                 controller_port: int) -> None:
     """Sets the controller port of a service."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         cursor.execute(
             """\
             UPDATE services SET
-            controller_port=(?) WHERE name=(?)""",
-            (controller_port, service_name))
+            controller_port=(?) WHERE service_id=(?)""",
+            (controller_port, service_id))
 
 
-def set_service_load_balancer_port(service_name: str,
+def set_service_load_balancer_port(service_id: int,
                                    load_balancer_port: int) -> None:
     """Sets the load balancer port of a service."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         cursor.execute(
             """\
             UPDATE services SET
-            load_balancer_port=(?) WHERE name=(?)""",
-            (load_balancer_port, service_name))
+            load_balancer_port=(?) WHERE service_id=(?)""",
+            (load_balancer_port, service_id))
 
 
 def _get_service_from_row(row) -> Dict[str, Any]:
-    (name, controller_job_id, controller_port, load_balancer_port, status,
+    (service_id, name, controller_port, load_balancer_port, status,
      uptime, policy, auto_restart, requested_resources) = row[:9]
     return {
+        'service_id': service_id,
         'name': name,
-        'controller_job_id': controller_job_id,
         'controller_port': controller_port,
         'load_balancer_port': load_balancer_port,
         'status': ServiceStatus[status],
@@ -257,11 +258,11 @@ def get_services() -> List[Dict[str, Any]]:
         return records
 
 
-def get_service_from_name(service_name: str) -> Optional[Dict[str, Any]]:
-    """Get all existing service records."""
+def get_service_from_id(service_id: str) -> Optional[Dict[str, Any]]:
+    """Get existing service record corresponding to the service id."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
-        rows = cursor.execute('SELECT * FROM services WHERE name=(?)',
-                              (service_name,)).fetchall()
+        rows = cursor.execute('SELECT * FROM services WHERE service_id=(?)',
+                              (service_id,)).fetchall()
         for row in rows:
             return _get_service_from_row(row)
         return None
@@ -292,49 +293,49 @@ def get_glob_service_names(
 
 
 # === Replica functions ===
-def add_or_update_replica(service_name: str, replica_id: int,
+def add_or_update_replica(service_id: int, replica_id: int,
                           replica_info: 'replica_managers.ReplicaInfo') -> None:
     """Adds a replica to the database."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         cursor.execute(
             """\
             INSERT OR REPLACE INTO replicas
-            (service_name, replica_id, replica_info)
+            (service_id, replica_id, replica_info)
             VALUES (?, ?, ?)""",
-            (service_name, replica_id, pickle.dumps(replica_info)))
+            (service_id, replica_id, pickle.dumps(replica_info)))
 
 
-def remove_replica(service_name: str, replica_id: int) -> None:
+def remove_replica(service_id: int, replica_id: int) -> None:
     """Removes a replica from the database."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         cursor.execute(
             """\
             DELETE FROM replicas
-            WHERE service_name=(?)
-            AND replica_id=(?)""", (service_name, replica_id))
+            WHERE service_id=(?)
+            AND replica_id=(?)""", (service_id, replica_id))
 
 
 def get_replica_info_from_id(
-        service_name: str,
+        service_id: int,
         replica_id: int) -> Optional['replica_managers.ReplicaInfo']:
     """Gets a replica info from the database."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         rows = cursor.execute(
             """\
             SELECT replica_info FROM replicas
-            WHERE service_name=(?)
-            AND replica_id=(?)""", (service_name, replica_id)).fetchall()
+            WHERE service_id=(?)
+            AND replica_id=(?)""", (service_id, replica_id)).fetchall()
         for row in rows:
             return pickle.loads(row[0])
         return None
 
 
 def get_replica_infos(
-        service_name: str) -> List['replica_managers.ReplicaInfo']:
+        service_id: int) -> List['replica_managers.ReplicaInfo']:
     """Gets all replica infos of a service."""
     with db_utils.safe_cursor(_DB_PATH) as cursor:
         rows = cursor.execute(
             """\
             SELECT replica_info FROM replicas
-            WHERE service_name=(?)""", (service_name,)).fetchall()
+            WHERE service_id=(?)""", (service_id,)).fetchall()
         return [pickle.loads(row[0]) for row in rows]

@@ -5,7 +5,7 @@ import os
 import pathlib
 import shutil
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import filelock
 import yaml
@@ -95,16 +95,11 @@ def _cleanup(service_name: str, task_yaml: str) -> bool:
     return failed
 
 
-def _start(service_name: str, task_yaml: str, job_id: int):
+def _start(service_id: int, service_dir: str, task_yaml: str, service_name: Optional[str]):
     """Starts the service."""
     # Generate log file name.
     load_balancer_log_file = os.path.expanduser(
-        serve_utils.generate_remote_load_balancer_log_file_name(service_name))
-
-    # Create the service working directory.
-    service_dir = os.path.expanduser(
-        serve_utils.generate_remote_service_dir_name(service_name))
-    os.makedirs(service_dir, exist_ok=True)
+        serve_utils.generate_remote_load_balancer_log_file_name(service_id))
 
     # Generate ssh key pair to avoid race condition when multiple sky.launch
     # are executed at the same time.
@@ -121,9 +116,8 @@ def _start(service_name: str, task_yaml: str, job_id: int):
     status = serve_state.ServiceStatus.CONTROLLER_INIT
     if len(serve_state.get_services()) >= serve_utils.NUM_SERVICE_THRESHOLD:
         status = serve_state.ServiceStatus.PENDING
-    # TODO(tian): Use id as identifier instead of name.
-    serve_state.add_service(service_name,
-                            controller_job_id=job_id,
+    serve_state.add_service(service_id,
+                            name=service_name,
                             policy=service_spec.policy_str(),
                             auto_restart=service_spec.auto_restart,
                             requested_resources=requested_resources,
@@ -139,7 +133,7 @@ def _start(service_name: str, task_yaml: str, job_id: int):
             if (len(serve_state.get_services()) <=
                     serve_utils.NUM_SERVICE_THRESHOLD):
                 serve_state.set_service_status(
-                    service_name, serve_state.ServiceStatus.CONTROLLER_INIT)
+                    service_id, serve_state.ServiceStatus.CONTROLLER_INIT)
                 break
             time.sleep(1)
 
@@ -150,9 +144,9 @@ def _start(service_name: str, task_yaml: str, job_id: int):
             # Start the controller.
             controller_process = multiprocessing.Process(
                 target=controller.run_controller,
-                args=(service_name, service_spec, task_yaml, controller_port))
+                args=(service_id, service_spec, task_yaml, controller_port))
             controller_process.start()
-            serve_state.set_service_controller_port(service_name,
+            serve_state.set_service_controller_port(service_id,
                                                     controller_port)
 
             # TODO(tian): Support HTTPS.
@@ -168,14 +162,14 @@ def _start(service_name: str, task_yaml: str, job_id: int):
                     load_balancer_log_file).run,
                 args=(controller_addr, load_balancer_port, replica_port))
             load_balancer_process.start()
-            serve_state.set_service_load_balancer_port(service_name,
+            serve_state.set_service_load_balancer_port(service_id,
                                                        load_balancer_port)
 
         while True:
             _handle_signal(service_name)
             time.sleep(1)
     except exceptions.ServeUserTerminatedError:
-        serve_state.set_service_status(service_name,
+        serve_state.set_service_status(service_id,
                                        serve_state.ServiceStatus.SHUTTING_DOWN)
     finally:
         process_to_kill: List[multiprocessing.Process] = []
@@ -192,30 +186,35 @@ def _start(service_name: str, task_yaml: str, job_id: int):
         failed = _cleanup(service_name, task_yaml)
         if failed:
             serve_state.set_service_status(
-                service_name, serve_state.ServiceStatus.FAILED_CLEANUP)
-            logger.error(f'Service {service_name} failed to clean up.')
+                service_id, serve_state.ServiceStatus.FAILED_CLEANUP)
+            logger.error(f'Service {service_id} failed to clean up.')
         else:
-            shutil.rmtree(service_dir)
-            serve_state.remove_service(service_name)
-            logger.info(f'Service {service_name} terminated successfully.')
+            shutil.rmtree(os.path.expanduser(service_dir))
+            serve_state.remove_service(service_id)
+            logger.info(f'Service {service_id} terminated successfully.')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Sky Serve Service')
-    parser.add_argument('--service-name',
-                        type=str,
-                        help='Name of the service',
-                        required=True)
+    parser.add_argument('--service-id',
+                        required=True,
+                        type=int,
+                        help='Id of the service')
+    parser.add_argument('--service-dir',
+                        required=True,
+                        type=int,
+                        help='Working directory of the service')
     parser.add_argument('--task-yaml',
                         type=str,
                         help='Task YAML file',
                         required=True)
-    parser.add_argument('--job-id',
-                        required=True,
-                        type=int,
-                        help='Job id for the service job.')
+    parser.add_argument('--service-name',
+                        type=str,
+                        help='Name of the service',
+                        required=False)
     args = parser.parse_args()
     # We start process with 'spawn', because 'fork' could result in weird
     # behaviors; 'spawn' is also cross-platform.
     multiprocessing.set_start_method('spawn', force=True)
-    _start(args.service_name, args.task_yaml, args.job_id)
+    # We use the job id as the service id.
+    _start(args.job_id, args.task_yaml, args.service_name)

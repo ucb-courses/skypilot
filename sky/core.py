@@ -1010,8 +1010,8 @@ def serve_status(
     .. code-block:: python
 
         {
-            'name': (str) service name,
-            'controller_job_id': (int) the job id of the controller,
+            'service_id': (int) the id of the service,
+            'name': (Optional[str]) service name,
             'uptime': (int) uptime in seconds,
             'status': (sky.ServiceStatus) service status,
             'controller_port': (Optional[int]) controller port,

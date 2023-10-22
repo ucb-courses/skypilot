@@ -1044,6 +1044,7 @@ def serve_up(
         controller_log_file = (
             serve.generate_remote_controller_log_file_name(service_name))
         vars_to_fill = {
+            'metadata_dir': serve.SKYSERVE_METADATA_DIR,
             'remote_task_yaml_path': remote_task_yaml_path,
             'local_task_yaml_path': service_file.name,
             'google_sdk_installation_commands':
