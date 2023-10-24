@@ -38,10 +38,10 @@ from sky.execution import spot_launch
 from sky.optimizer import Optimizer
 from sky.optimizer import OptimizeTarget
 from sky.resources import Resources
-from sky.skylet.job_lib import JobStatus
 from sky.task import Task
 from sky.utils.record_types import ClusterInfo
 from sky.utils.status_lib import ClusterStatus
+from sky.utils.status_lib import JobStatus
 
 # Aliases.
 IBM = clouds.IBM

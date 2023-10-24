@@ -19,6 +19,7 @@ from sky import sky_logging
 from sky.skylet import constants
 from sky.skylet import job_lib
 from sky.utils import log_utils
+from sky.utils import status_lib
 from sky.utils import subprocess_utils
 
 _SKY_LOG_WAITING_GAP_SECONDS = 1
@@ -383,8 +384,8 @@ def _follow_job_logs(file,
             # Auto-exit the log tailing, if the job has finished. Check
             # the job status before query again to avoid unfinished logs.
             if status not in [
-                    job_lib.JobStatus.SETTING_UP, job_lib.JobStatus.PENDING,
-                    job_lib.JobStatus.RUNNING
+                    status_lib.JobStatus.SETTING_UP,
+                    status_lib.JobStatus.PENDING, status_lib.JobStatus.RUNNING
             ]:
                 if wait_last_logs:
                     # Wait all the logs are printed before exit.
@@ -440,7 +441,7 @@ def tail_logs(job_owner: str,
     retry_cnt = 0
     while status is not None and not status.is_terminal():
         retry_cnt += 1
-        if os.path.exists(log_path) and status != job_lib.JobStatus.INIT:
+        if os.path.exists(log_path) and status != status_lib.JobStatus.INIT:
             break
         if retry_cnt >= _SKY_LOG_WAITING_MAX_RETRY:
             print(
@@ -455,9 +456,9 @@ def tail_logs(job_owner: str,
 
     start_stream_at = 'INFO: Tip: use Ctrl-C to exit log'
     if follow and status in [
-            job_lib.JobStatus.SETTING_UP,
-            job_lib.JobStatus.PENDING,
-            job_lib.JobStatus.RUNNING,
+            status_lib.JobStatus.SETTING_UP,
+            status_lib.JobStatus.PENDING,
+            status_lib.JobStatus.RUNNING,
     ]:
         # Not using `ray job logs` because it will put progress bar in
         # multiple lines.

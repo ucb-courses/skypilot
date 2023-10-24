@@ -2092,7 +2092,7 @@ def logs(
         job_status = list(job_statuses.values())[0]
         job_status_str = job_status.value if job_status is not None else 'None'
         click.echo(f'Job {job_id}: {job_status_str}')
-        if job_status == job_lib.JobStatus.SUCCEEDED:
+        if job_status == status_lib.JobStatus.SUCCEEDED:
             return
         else:
             if job_status is None:

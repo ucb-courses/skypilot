@@ -26,7 +26,6 @@ from sky import sky_logging
 from sky.backends import backend_utils
 from sky.benchmark import benchmark_state
 from sky.skylet import constants
-from sky.skylet import job_lib
 from sky.skylet import log_lib
 from sky.utils import common_utils
 from sky.utils import log_utils
@@ -322,9 +321,9 @@ def _update_benchmark_result(benchmark_result: Dict[str, Any]) -> Optional[str]:
 
     # Update the benchmark status.
     if (cluster_status == status_lib.ClusterStatus.INIT or
-            job_status < job_lib.JobStatus.RUNNING):
+            job_status < status_lib.JobStatus.RUNNING):
         benchmark_status = benchmark_state.BenchmarkStatus.INIT
-    elif job_status == job_lib.JobStatus.RUNNING:
+    elif job_status == status_lib.JobStatus.RUNNING:
         benchmark_status = benchmark_state.BenchmarkStatus.RUNNING
     elif (cluster_status is None or
           cluster_status == status_lib.ClusterStatus.STOPPED or
@@ -334,7 +333,7 @@ def _update_benchmark_result(benchmark_result: Dict[str, Any]) -> Optional[str]:
         if end_time is not None:
             # The job has terminated with zero exit code.
             benchmark_status = benchmark_state.BenchmarkStatus.FINISHED
-        elif job_status == job_lib.JobStatus.SUCCEEDED:
+        elif job_status == status_lib.JobStatus.SUCCEEDED:
             # Since we download the benchmark logs before checking the cluster
             # status, there is a chance that the end timestamp is saved
             # and the cluster is stopped AFTER we download the logs.
@@ -363,7 +362,7 @@ def _update_benchmark_result(benchmark_result: Dict[str, Any]) -> Optional[str]:
         else:
             last_time = end_time
         if last_time is None:
-            if job_status == job_lib.JobStatus.RUNNING:
+            if job_status == status_lib.JobStatus.RUNNING:
                 last_time = time.time()
             else:
                 message = (f'No duration information found for {cluster}. '
@@ -380,7 +379,7 @@ def _update_benchmark_result(benchmark_result: Dict[str, Any]) -> Optional[str]:
         # without SkyCallback logs.
         record = benchmark_state.BenchmarkRecord(start_time=start_time,
                                                  last_time=end_time)
-    elif job_status == job_lib.JobStatus.RUNNING:
+    elif job_status == status_lib.JobStatus.RUNNING:
         # (3) SkyCallback is not initialized yet or not used.
         message = ('SkyCallback is not initialized yet '
                    f'or not used for {cluster}.')

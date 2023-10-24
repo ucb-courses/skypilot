@@ -246,6 +246,7 @@ class RayCodeGen:
             from sky.skylet import constants
             from sky.skylet import job_lib
             from sky.utils import log_utils
+            from sky.utils import status_lib
 
             SKY_REMOTE_WORKDIR = {constants.SKY_REMOTE_WORKDIR!r}
 
@@ -286,7 +287,7 @@ class RayCodeGen:
                   autostop_lib.set_last_active_time_to_now()
             """))
         self._code += [
-            f'job_lib.set_status({job_id!r}, job_lib.JobStatus.PENDING)',
+            f'job_lib.set_status({job_id!r}, status_lib.JobStatus.PENDING)',
         ]
 
     def add_gang_scheduling_placement_group_and_setup(
@@ -364,7 +365,7 @@ class RayCodeGen:
                 # requirement; this means Ray will set CUDA_VISIBLE_DEVICES to an empty string.
                 # We unset it so that user setup command may properly use this env var.
                 setup_cmd = 'unset CUDA_VISIBLE_DEVICES; ' + setup_cmd
-                job_lib.set_status({job_id!r}, job_lib.JobStatus.SETTING_UP)
+                job_lib.set_status({job_id!r}, status_lib.JobStatus.SETTING_UP)
 
                 # The schedule_step should be called after the job status is set to non-PENDING,
                 # otherwise, the scheduler will think the current job is not submitted yet, and
@@ -394,7 +395,7 @@ class RayCodeGen:
                     ) for i in range(total_num_nodes)]
                 setup_returncodes = ray.get(setup_workers)
                 if sum(setup_returncodes) != 0:
-                    job_lib.set_status({self.job_id!r}, job_lib.JobStatus.FAILED_SETUP)
+                    job_lib.set_status({self.job_id!r}, status_lib.JobStatus.FAILED_SETUP)
                     # This waits for all streaming logs to finish.
                     time.sleep(1)
                     print('ERROR: {colorama.Fore.RED}Job {self.job_id}\\'s setup failed with '
@@ -584,7 +585,7 @@ class RayCodeGen:
             textwrap.dedent(f"""\
             returncodes = ray.get(futures)
             if sum(returncodes) != 0:
-                job_lib.set_status({self.job_id!r}, job_lib.JobStatus.FAILED)
+                job_lib.set_status({self.job_id!r}, status_lib.JobStatus.FAILED)
                 # This waits for all streaming logs to finish.
                 job_lib.scheduler.schedule_step()
                 time.sleep(0.5)
@@ -598,7 +599,7 @@ class RayCodeGen:
             else:
                 sys.stdout.flush()
                 sys.stderr.flush()
-                job_lib.set_status({self.job_id!r}, job_lib.JobStatus.SUCCEEDED)
+                job_lib.set_status({self.job_id!r}, status_lib.JobStatus.SUCCEEDED)
                 # This waits for all streaming logs to finish.
                 job_lib.scheduler.schedule_step()
                 time.sleep(0.5)
@@ -3607,7 +3608,7 @@ class CloudVmRayBackend(backends.Backend['CloudVmRayResourceHandle']):
         handle: CloudVmRayResourceHandle,
         job_ids: Optional[List[int]] = None,
         stream_logs: bool = True
-    ) -> Dict[Optional[int], Optional[job_lib.JobStatus]]:
+    ) -> Dict[Optional[int], Optional[status_lib.JobStatus]]:
         code = job_lib.JobLibCodeGen.get_job_status(job_ids)
         returncode, stdout, stderr = self.run_on_head(handle,
                                                       code,

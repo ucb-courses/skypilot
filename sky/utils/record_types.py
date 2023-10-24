@@ -33,3 +33,24 @@ class ClusterInfo(Generic[_ResourceHandleType]):
     """Metadata of the cluster"""
     _cluster_hash: str
     """Hash of the cluster (only used for internal purposes)"""
+
+
+@dataclasses.dataclass
+class JobInfo:
+    """Information about a job."""
+    job_id: int
+    """Job ID."""
+    job_name: str
+    """Job name."""
+    username: str
+    """Username launched the job on the remote VM."""
+    submitted_at: int
+    """Timestamp of when the job was submitted."""
+    start_at: int
+    """Timestamp of when the job was started."""
+    resources: str
+    """Resources used by the job, e.g. [CPU:0.5] or [V100:1]"""
+    status: status_lib.JobStatus
+    """Status of the job."""
+    log_path: str
+    """Path to the log file of the job on the remote VM."""

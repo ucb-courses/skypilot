@@ -454,7 +454,7 @@ def autostop(
 @usage_lib.entrypoint
 def queue(cluster_name: str,
           skip_finished: bool = False,
-          all_users: bool = False) -> List[dict]:
+          all_users: bool = False) -> List[record_types.JobInfo]:
     # NOTE(dev): Keep the docstring consistent between the Python API and CLI.
     """Get the job queue of a cluster.
 
@@ -465,22 +465,6 @@ def queue(cluster_name: str,
         skip_finished: whether to skip finished jobs.
         all_users: whether to get jobs from all users.
 
-    Returns:
-        .. code-block:: python
-
-            [
-                {
-                    'job_id': (int) job id,
-                    'job_name': (str) job name,
-                    'username': (str) username,
-                    'submitted_at': (int) timestamp of submitted,
-                    'start_at': (int) timestamp of started,
-                    'end_at': (int) timestamp of ended,
-                    'resources': (str) resources,
-                    'status': (sky.JobStatus) job status,
-                    'log_path': (str) log path,
-                }
-            ]
 
     Raises:
         ValueError: if the cluster does not exist.
@@ -696,10 +680,11 @@ def download_logs(
 
 
 @usage_lib.entrypoint
-def job_status(cluster_name: str,
-               job_ids: Optional[List[int]],
-               stream_logs: bool = False
-              ) -> Dict[Optional[int], Optional[job_lib.JobStatus]]:
+def job_status(
+    cluster_name: str,
+    job_ids: Optional[List[int]],
+    stream_logs: bool = False
+) -> Dict[Optional[int], Optional[status_lib.JobStatus]]:
     # NOTE(dev): Keep the docstring consistent between the Python API and CLI.
     """Get the status of jobs.
 

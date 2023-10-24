@@ -15,7 +15,6 @@ from sky import sky_logging
 from sky.backends import backend_utils
 from sky.backends import cloud_vm_ray_backend
 from sky.skylet import constants
-from sky.skylet import job_lib
 from sky.spot import recovery_strategy
 from sky.spot import spot_state
 from sky.spot import spot_utils
@@ -223,7 +222,7 @@ class SpotController:
             # can occur, i.e. cluster can be down during the job status check.
             job_status = spot_utils.get_job_status(self._backend, cluster_name)
 
-            if job_status == job_lib.JobStatus.SUCCEEDED:
+            if job_status == status_lib.JobStatus.SUCCEEDED:
                 end_time = spot_utils.get_job_timestamp(self._backend,
                                                         cluster_name,
                                                         get_end_time=True)
@@ -250,7 +249,8 @@ class SpotController:
                 continue
 
             if job_status in [
-                    job_lib.JobStatus.FAILED, job_lib.JobStatus.FAILED_SETUP
+                    status_lib.JobStatus.FAILED,
+                    status_lib.JobStatus.FAILED_SETUP
             ]:
                 # Add a grace period before the check of preemption to avoid
                 # false alarm for job failure.
@@ -275,7 +275,8 @@ class SpotController:
                     # The multi-node job is still running, continue monitoring.
                     continue
                 elif job_status in [
-                        job_lib.JobStatus.FAILED, job_lib.JobStatus.FAILED_SETUP
+                        status_lib.JobStatus.FAILED,
+                        status_lib.JobStatus.FAILED_SETUP
                 ]:
                     # The user code has probably crashed, fail immediately.
                     end_time = spot_utils.get_job_timestamp(self._backend,
@@ -287,7 +288,7 @@ class SpotController:
 
                     self._download_log_and_stream(handle)
                     spot_status_to_set = spot_state.SpotStatus.FAILED
-                    if job_status == job_lib.JobStatus.FAILED_SETUP:
+                    if job_status == status_lib.JobStatus.FAILED_SETUP:
                         spot_status_to_set = spot_state.SpotStatus.FAILED_SETUP
                     failure_reason = (
                         'To see the details, run: '

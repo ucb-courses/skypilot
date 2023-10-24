@@ -37,7 +37,8 @@ logger = sky_logging.init_logger(__name__)
 
 # Add user hash so that two users don't have the same controller VM on
 # shared-account clouds such as GCP.
-SPOT_CONTROLLER_NAME = f'sky-spot-controller-{common_utils.get_user_hash()}'
+SPOT_CONTROLLER_NAME: str = (
+    f'sky-spot-controller-{common_utils.get_user_hash()}')
 SIGNAL_FILE_PREFIX = '/tmp/sky_spot_controller_signal_{}'
 # Controller checks its job's status every this many seconds.
 JOB_STATUS_CHECK_GAP_SECONDS = 20
@@ -71,7 +72,7 @@ class UserSignal(enum.Enum):
 
 # ====== internal functions ======
 def get_job_status(backend: 'backends.CloudVmRayBackend',
-                   cluster_name: str) -> Optional['job_lib.JobStatus']:
+                   cluster_name: str) -> Optional['status_lib.JobStatus']:
     """Check the status of the job running on the spot cluster.
 
     It can be None, INIT, RUNNING, SUCCEEDED, FAILED, FAILED_SETUP or CANCELLED.
@@ -286,7 +287,7 @@ def stream_logs_by_id(job_id: int, follow: bool = True) -> str:
 
     with status_display:
         prev_msg = None
-        while (controller_status != job_lib.JobStatus.RUNNING and
+        while (controller_status != status_lib.JobStatus.RUNNING and
                (controller_status is None or
                 not controller_status.is_terminal())):
             status_str = 'None'
@@ -365,7 +366,7 @@ def stream_logs_by_id(job_id: int, follow: bool = True) -> str:
                 job_statuses = backend.get_job_status(handle, stream_logs=False)
                 job_status = list(job_statuses.values())[0]
                 assert job_status is not None, 'No job found.'
-                if job_status != job_lib.JobStatus.CANCELLED:
+                if job_status != status_lib.JobStatus.CANCELLED:
                     assert task_id is not None, job_id
                     if task_id < num_tasks - 1 and follow:
                         # The log for the current job is finished. We need to

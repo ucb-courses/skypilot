@@ -16,7 +16,6 @@ from sky import exceptions
 from sky import global_user_state
 from sky import sky_logging
 from sky.backends import backend_utils
-from sky.skylet import job_lib
 from sky.spot import spot_utils
 from sky.usage import usage_lib
 from sky.utils import common_utils
@@ -224,7 +223,7 @@ class StrategyExecutor:
                 continue
 
             # Check the job status until it is not in initialized status
-            if status is not None and status > job_lib.JobStatus.INIT:
+            if status is not None and status > status_lib.JobStatus.INIT:
                 try:
                     job_submitted_at = spot_utils.get_job_timestamp(
                         self.backend, self.cluster_name, get_end_time=False)
