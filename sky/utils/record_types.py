@@ -49,7 +49,7 @@ class JobInfo:
     start_at: int
     """Timestamp of when the job was started."""
     resources: str
-    """Resources used by the job, e.g. [CPU:0.5] or [V100:1]"""
+    """Resources used by the job."""
     status: status_lib.JobStatus
     """Status of the job."""
     log_path: str

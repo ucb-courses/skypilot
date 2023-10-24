@@ -40,6 +40,7 @@ from sky.optimizer import OptimizeTarget
 from sky.resources import Resources
 from sky.task import Task
 from sky.utils.record_types import ClusterInfo
+from sky.utils.record_types import JobInfo
 from sky.utils.status_lib import ClusterStatus
 from sky.utils.status_lib import JobStatus
 
@@ -77,6 +78,7 @@ __all__ = [
     'StoreType',
     'ClusterInfo',
     'ClusterStatus',
+    'JobInfo',
     'JobStatus',
     # APIs
     'Dag',
