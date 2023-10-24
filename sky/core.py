@@ -45,22 +45,6 @@ def status(cluster_names: Optional[Union[str, List[str]]] = None,
     If cluster_names is given, return those clusters. Otherwise, return all
     clusters.
 
-    Each returned value has the following fields:
-
-    .. code-block:: python
-
-        {
-            'name': (str) cluster name,
-            'launched_at': (int) timestamp of last launch on this cluster,
-            'handle': (ResourceHandle) an internal handle to the cluster,
-            'last_use': (str) the last command/entrypoint that affected this
-              cluster,
-            'status': (sky.ClusterStatus) cluster status,
-            'autostop': (int) idle time before autostop,
-            'to_down': (bool) whether autodown is used instead of autostop,
-            'metadata': (dict) metadata of the cluster,
-        }
-
     Each cluster can have one of the following statuses:
 
     - ``INIT``: The cluster may be live or down. It can happen in the following
