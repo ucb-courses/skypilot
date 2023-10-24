@@ -2711,7 +2711,7 @@ class CloudVmRayBackend(backends.Backend['CloudVmRayResourceHandle']):
             handle.launched_nodes, launched_resources)
         record = global_user_state.get_cluster_from_name(cluster_name)
         if record is not None:
-            usage_lib.messages.usage.update_cluster_status(record['status'])
+            usage_lib.messages.usage.update_cluster_status(record.status)
 
         # Backward compatibility: the old launched_resources without region info
         # was handled by ResourceHandle._update_cluster_region.
@@ -2885,7 +2885,7 @@ class CloudVmRayBackend(backends.Backend['CloudVmRayResourceHandle']):
                             failover_history=e.failover_history) from None
             if dryrun:
                 record = global_user_state.get_cluster_from_name(cluster_name)
-                return record['handle'] if record is not None else None
+                return record.handle if record is not None else None
 
             if 'provision_record' in config_dict:
                 # New provisioner is used here.
@@ -3833,8 +3833,7 @@ class CloudVmRayBackend(backends.Backend['CloudVmRayResourceHandle']):
         else:
             record = global_user_state.get_cluster_from_name(
                 handle.cluster_name)
-            prev_cluster_status = record[
-                'status'] if record is not None else None
+            prev_cluster_status = record.status if record is not None else None
         if prev_cluster_status is None:
             # When the cluster is not in the cluster table, we guarantee that
             # all related resources / cache / config are cleaned up, i.e. it
@@ -4290,8 +4289,8 @@ class CloudVmRayBackend(backends.Backend['CloudVmRayResourceHandle']):
             # TODO(zhwu): complete the list of exceptions.
         """
         record = global_user_state.get_cluster_from_name(cluster_name)
-        handle_before_refresh = None if record is None else record['handle']
-        status_before_refresh = None if record is None else record['status']
+        handle_before_refresh = None if record is None else record.handle
+        status_before_refresh = None if record is None else record.status
 
         prev_cluster_status, handle = (status_before_refresh,
                                        handle_before_refresh)

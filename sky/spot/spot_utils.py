@@ -819,7 +819,7 @@ def is_spot_controller_up(
         record = global_user_state.get_cluster_from_name(SPOT_CONTROLLER_NAME)
         controller_status, handle = None, None
         if record is not None:
-            controller_status, handle = record['status'], record['handle']
+            controller_status, handle = record.status, record.handle
 
     if controller_status is None:
         sky_logging.print(non_existent_message)

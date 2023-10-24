@@ -10,13 +10,12 @@ from sky import spot
 from sky.backends import backend_utils
 from sky.utils import common_utils
 from sky.utils import log_utils
+from sky.utils import record_types
 from sky.utils import status_lib
 
 COMMAND_TRUNC_LENGTH = 25
 NUM_COST_REPORT_LINES = 5
 
-# A record in global_user_state's 'clusters' table.
-_ClusterRecord = Dict[str, Any]
 # A record returned by core.cost_report(); see its docstr for all fields.
 _ClusterCostReportRecord = Dict[str, Any]
 
@@ -60,7 +59,7 @@ class StatusColumn:
         return val
 
 
-def show_status_table(cluster_records: List[_ClusterRecord],
+def show_status_table(cluster_records: List[record_types.ClusterInfo],
                       show_all: bool) -> int:
     """Compute cluster table values and display.
 
@@ -227,7 +226,7 @@ def show_local_status_table(local_clusters: List[str]):
     names = []
     # Handling for initialized clusters.
     for cluster_status in clusters_status:
-        handle = cluster_status['handle']
+        handle = cluster_status.handle
         config_path = handle.cluster_yaml
         config = common_utils.read_yaml(config_path)
         username = config['auth']['ssh_user']
@@ -257,7 +256,7 @@ def show_local_status_table(local_clusters: List[str]):
                     local_cluster_resources[idx] = None
             resources_str = '[{}]'.format(', '.join(
                 map(str, local_cluster_resources)))
-        command_str = cluster_status['last_use']
+        command_str = cluster_status.last_use
         cluster_name = handle.cluster_name
         row = [
             # NAME
@@ -297,29 +296,30 @@ def show_local_status_table(local_clusters: List[str]):
         click.echo(cluster_table)
 
 
-# Some of these lambdas are invoked on both _ClusterRecord and
+# Some of these lambdas are invoked on both record_types.ClusterInfo and
 # _ClusterCostReportRecord, which is okay as we guarantee the queried fields
 # exist in those cases.
-_get_name = (lambda cluster_record: cluster_record['name'])
+_get_name = (lambda cluster_record: cluster_record.name)
 _get_launched = (lambda cluster_record: log_utils.readable_time_duration(
-    cluster_record['launched_at']))
+    cluster_record.launched_at))
 _get_region = (
-    lambda clusters_status: clusters_status['handle'].launched_resources.region)
-_get_command = (lambda cluster_record: cluster_record['last_use'])
+    lambda clusters_status: clusters_status.handle.launched_resources.region)
+_get_command = (lambda cluster_record: cluster_record.last_use)
 _get_duration = (lambda cluster_record: log_utils.readable_time_duration(
     0, cluster_record['duration'], absolute=True))
 
 
-def _get_status(cluster_record: _ClusterRecord) -> status_lib.ClusterStatus:
-    return cluster_record['status']
+def _get_status(
+        cluster_record: record_types.ClusterInfo) -> status_lib.ClusterStatus:
+    return cluster_record.status
 
 
-def _get_status_colored(cluster_record: _ClusterRecord) -> str:
+def _get_status_colored(cluster_record: record_types.ClusterInfo) -> str:
     return _get_status(cluster_record).colored_str()
 
 
-def _get_resources(cluster_record: _ClusterRecord) -> str:
-    handle = cluster_record['handle']
+def _get_resources(cluster_record: record_types.ClusterInfo) -> str:
+    handle = cluster_record.handle
     resources_str = '<initializing>'
     if isinstance(handle, backends.LocalDockerResourceHandle):
         resources_str = 'docker'
@@ -342,30 +342,30 @@ def _get_resources(cluster_record: _ClusterRecord) -> str:
     return resources_str
 
 
-def _get_zone(cluster_record: _ClusterRecord) -> str:
-    zone_str = cluster_record['handle'].launched_resources.zone
+def _get_zone(cluster_record: record_types.ClusterInfo) -> str:
+    zone_str = cluster_record.handle.launched_resources.zone
     if zone_str is None:
         zone_str = '-'
     return zone_str
 
 
-def _get_autostop(cluster_record: _ClusterRecord) -> str:
+def _get_autostop(cluster_record: record_types.ClusterInfo) -> str:
     autostop_str = ''
     separation = ''
-    if cluster_record['autostop'] >= 0:
+    if cluster_record.autostop >= 0:
         # TODO(zhwu): check the status of the autostop cluster.
-        autostop_str = str(cluster_record['autostop']) + 'm'
+        autostop_str = str(cluster_record.autostop) + 'm'
         separation = ' '
 
-    if cluster_record['to_down']:
+    if cluster_record.to_down:
         autostop_str += f'{separation}(down)'
     if autostop_str == '':
         autostop_str = '-'
     return autostop_str
 
 
-def _get_head_ip(cluster_record: _ClusterRecord) -> str:
-    handle = cluster_record['handle']
+def _get_head_ip(cluster_record: record_types.ClusterInfo) -> str:
+    handle = cluster_record.handle
     if not isinstance(handle, backends.CloudVmRayResourceHandle):
         return '-'
     if handle.head_ip is None:
@@ -373,9 +373,9 @@ def _get_head_ip(cluster_record: _ClusterRecord) -> str:
     return handle.head_ip
 
 
-def _is_pending_autostop(cluster_record: _ClusterRecord) -> bool:
+def _is_pending_autostop(cluster_record: record_types.ClusterInfo) -> bool:
     # autostop < 0 means nothing scheduled.
-    return cluster_record['autostop'] >= 0 and _get_status(
+    return cluster_record.autostop >= 0 and _get_status(
         cluster_record) != status_lib.ClusterStatus.STOPPED
 
 

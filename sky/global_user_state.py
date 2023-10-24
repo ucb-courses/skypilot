@@ -21,6 +21,7 @@ from sky.adaptors import cloudflare
 from sky.data import storage as storage_lib
 from sky.utils import common_utils
 from sky.utils import db_utils
+from sky.utils import record_types
 from sky.utils import status_lib
 
 if typing.TYPE_CHECKING:
@@ -508,7 +509,7 @@ def _load_owner(record_owner: Optional[str]) -> Optional[List[str]]:
 
 
 def get_cluster_from_name(
-        cluster_name: Optional[str]) -> Optional[Dict[str, Any]]:
+        cluster_name: Optional[str]) -> Optional[record_types.ClusterInfo]:
     rows = _DB.cursor.execute('SELECT * FROM clusters WHERE name=(?)',
                               (cluster_name,)).fetchall()
     for row in rows:
@@ -518,23 +519,23 @@ def get_cluster_from_name(
         (name, launched_at, handle, last_use, status, autostop, metadata,
          to_down, owner, cluster_hash) = row[:10]
         # TODO: use namedtuple instead of dict
-        record = {
-            'name': name,
-            'launched_at': launched_at,
-            'handle': pickle.loads(handle),
-            'last_use': last_use,
-            'status': status_lib.ClusterStatus[status],
-            'autostop': autostop,
-            'to_down': bool(to_down),
-            'owner': _load_owner(owner),
-            'metadata': json.loads(metadata),
-            'cluster_hash': cluster_hash,
-        }
+        record = record_types.ClusterInfo(
+            name=name,
+            status=status_lib.ClusterStatus[status],
+            launched_at=launched_at,
+            handle=pickle.loads(handle),
+            last_use=last_use,
+            autostop=autostop,
+            to_down=bool(to_down),
+            owner=_load_owner(owner),
+            metadata=json.loads(metadata),
+            _cluster_hash=cluster_hash,
+        )
         return record
     return None
 
 
-def get_clusters() -> List[Dict[str, Any]]:
+def get_clusters() -> List[record_types.ClusterInfo]:
     rows = _DB.cursor.execute(
         'select * from clusters order by launched_at desc').fetchall()
     records = []
@@ -543,18 +544,18 @@ def get_clusters() -> List[Dict[str, Any]]:
          to_down, owner, cluster_hash) = row[:10]
         # TODO: use namedtuple instead of dict
 
-        record = {
-            'name': name,
-            'launched_at': launched_at,
-            'handle': pickle.loads(handle),
-            'last_use': last_use,
-            'status': status_lib.ClusterStatus[status],
-            'autostop': autostop,
-            'to_down': bool(to_down),
-            'owner': _load_owner(owner),
-            'metadata': json.loads(metadata),
-            'cluster_hash': cluster_hash,
-        }
+        record = record_types.ClusterInfo(
+            name=name,
+            status=status_lib.ClusterStatus[status],
+            launched_at=launched_at,
+            handle=pickle.loads(handle),
+            last_use=last_use,
+            autostop=autostop,
+            to_down=bool(to_down),
+            owner=_load_owner(owner),
+            metadata=json.loads(metadata),
+            _cluster_hash=cluster_hash,
+        )
 
         records.append(record)
     return records

@@ -19,6 +19,7 @@ from sky.backends import backend_utils
 from sky.skylet import constants
 from sky.skylet import job_lib
 from sky.usage import usage_lib
+from sky.utils import record_types
 from sky.utils import rich_utils
 from sky.utils import status_lib
 from sky.utils import subprocess_utils
@@ -37,7 +38,7 @@ logger = sky_logging.init_logger(__name__)
 
 @usage_lib.entrypoint
 def status(cluster_names: Optional[Union[str, List[str]]] = None,
-           refresh: bool = False) -> List[Dict[str, Any]]:
+           refresh: bool = False) -> List[record_types.ClusterInfo]:
     # NOTE(dev): Keep the docstring consistent between the Python API and CLI.
     """Get cluster statuses.
 

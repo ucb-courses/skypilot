@@ -128,6 +128,13 @@ Resources
   .. automethod:: __init__
 
 
+Dataclasses
+-----------------
+
+.. autoclass:: sky.ClusterInfo
+  :members:
+
+
 Enums
 -----------------
 

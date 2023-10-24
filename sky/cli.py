@@ -1796,7 +1796,7 @@ def status(all: bool, refresh: bool, ip: bool, show_spot_jobs: bool,
         nonreserved_cluster_records = []
         reserved_clusters = []
         for cluster_record in cluster_records:
-            cluster_name = cluster_record['name']
+            cluster_name = cluster_record.name
             if cluster_name in backend_utils.SKY_RESERVED_CLUSTER_NAMES:
                 reserved_clusters.append(cluster_record)
             else:
@@ -1968,7 +1968,7 @@ def queue(clusters: List[str], skip_finished: bool, all_users: bool):
     else:
         show_local_clusters = True
         cluster_infos = global_user_state.get_clusters()
-        clusters = [c['name'] for c in cluster_infos]
+        clusters = [c.name for c in cluster_infos]
 
     unsupported_clusters = []
     for cluster in clusters:
@@ -2467,9 +2467,9 @@ def start(
 
         # Get all clusters that are not reserved names.
         clusters = [
-            cluster['name']
+            cluster.name
             for cluster in global_user_state.get_clusters()
-            if cluster['name'] not in backend_utils.SKY_RESERVED_CLUSTER_NAMES
+            if cluster.name not in backend_utils.SKY_RESERVED_CLUSTER_NAMES
         ]
 
     if not clusters:
@@ -2813,9 +2813,9 @@ def _down_or_stop_clusters(
         # Otherwise, it would be very easy to accidentally delete a reserved
         # cluster.
         names = [
-            record['name']
+            record.name
             for record in all_clusters
-            if record['name'] not in backend_utils.SKY_RESERVED_CLUSTER_NAMES
+            if record.name not in backend_utils.SKY_RESERVED_CLUSTER_NAMES
         ]
 
     clusters = []

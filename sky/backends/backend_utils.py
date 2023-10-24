@@ -47,6 +47,7 @@ from sky.usage import usage_lib
 from sky.utils import command_runner
 from sky.utils import common_utils
 from sky.utils import env_options
+from sky.utils import record_types
 from sky.utils import rich_utils
 from sky.utils import status_lib
 from sky.utils import subprocess_utils
@@ -1766,13 +1767,13 @@ def check_owner_identity(cluster_name: str) -> None:
     record = global_user_state.get_cluster_from_name(cluster_name)
     if record is None:
         return
-    handle = record['handle']
+    handle = record.handle
     if not isinstance(handle, backends.CloudVmRayResourceHandle):
         return
 
     cloud = handle.launched_resources.cloud
     current_user_identity = cloud.get_current_user_identity()
-    owner_identity = record['owner']
+    owner_identity = record.owner
     if current_user_identity is None:
         # Skip the check if the cloud does not support user identity.
         return
@@ -1991,7 +1992,7 @@ def check_can_clone_disk_and_override_task(
 
 
 def _update_cluster_status_no_lock(
-        cluster_name: str) -> Optional[Dict[str, Any]]:
+        cluster_name: str) -> Optional[record_types.ClusterInfo]:
     """Updates the status of the cluster.
 
     Raises:
@@ -2001,7 +2002,7 @@ def _update_cluster_status_no_lock(
     record = global_user_state.get_cluster_from_name(cluster_name)
     if record is None:
         return None
-    handle = record['handle']
+    handle = record.handle
     if not isinstance(handle, backends.CloudVmRayResourceHandle):
         return record
     cluster_name = handle.cluster_name
@@ -2097,7 +2098,7 @@ def _update_cluster_status_no_lock(
         # NOTE: all_nodes_up calculation is fast due to calling cloud CLI;
         # run_ray_status_to_check_all_nodes_up() is slow due to calling `ray get
         # head-ip/worker-ips`.
-        record['status'] = status_lib.ClusterStatus.UP
+        record.status = status_lib.ClusterStatus.UP
         global_user_state.add_or_update_cluster(cluster_name,
                                                 handle,
                                                 requested_resources=None,
@@ -2163,7 +2164,7 @@ def _update_cluster_status_no_lock(
                      f'node_statuses: {node_statuses}')
         backend = get_backend_from_handle(handle)
         if isinstance(backend,
-                      backends.CloudVmRayBackend) and record['autostop'] >= 0:
+                      backends.CloudVmRayBackend) and record.autostop >= 0:
             if not backend.is_definitely_autostopping(handle,
                                                       stream_logs=False):
                 # Reset the autostopping as the cluster is abnormal, and may
@@ -2181,9 +2182,9 @@ def _update_cluster_status_no_lock(
                     handle.cluster_name, -1, to_down=False)
 
                 # Friendly hint.
-                autostop = record['autostop']
-                maybe_down_str = ' --down' if record['to_down'] else ''
-                noun = 'autodown' if record['to_down'] else 'autostop'
+                autostop = record.autostop
+                maybe_down_str = ' --down' if record.to_down else ''
+                noun = 'autodown' if record.to_down else 'autostop'
                 if success:
                     operation_str = (f'Canceled {noun} on the cluster '
                                      f'{cluster_name!r}')
@@ -2202,8 +2203,7 @@ def _update_cluster_status_no_lock(
                     f'{reset}')
             else:
                 ux_utils.console_newline()
-                operation_str = 'autodowning' if record[
-                    'to_down'] else 'autostopping'
+                operation_str = 'autodowning' if record.to_down else 'autostopping'
                 logger.info(
                     f'Cluster {cluster_name!r} is {operation_str}. Setting to '
                     'INIT status; try refresh again in a while.')
@@ -2227,8 +2227,8 @@ def _update_cluster_status_no_lock(
 
 
 def _update_cluster_status(
-        cluster_name: str,
-        acquire_per_cluster_status_lock: bool) -> Optional[Dict[str, Any]]:
+    cluster_name: str, acquire_per_cluster_status_lock: bool
+) -> Optional[record_types.ClusterInfo]:
     """Update the cluster status.
 
     The cluster status is updated by checking ray cluster and real status from
@@ -2275,11 +2275,11 @@ def _update_cluster_status(
 
 
 def _refresh_cluster_record(
-        cluster_name: str,
-        *,
-        force_refresh_statuses: Optional[Set[status_lib.ClusterStatus]] = None,
-        acquire_per_cluster_status_lock: bool = True
-) -> Optional[Dict[str, Any]]:
+    cluster_name: str,
+    *,
+    force_refresh_statuses: Optional[Set[status_lib.ClusterStatus]] = None,
+    acquire_per_cluster_status_lock: bool = True
+) -> Optional[record_types.ClusterInfo]:
     """Refresh the cluster, and return the possibly updated record.
 
     This function will also check the owner identity of the cluster, and raise
@@ -2316,13 +2316,13 @@ def _refresh_cluster_record(
         return None
     check_owner_identity(cluster_name)
 
-    handle = record['handle']
+    handle = record.handle
     if isinstance(handle, backends.CloudVmRayResourceHandle):
         use_spot = handle.launched_resources.use_spot
-        has_autostop = (record['status'] != status_lib.ClusterStatus.STOPPED and
-                        record['autostop'] >= 0)
+        has_autostop = (record.status != status_lib.ClusterStatus.STOPPED and
+                        record.autostop >= 0)
         force_refresh_for_cluster = (force_refresh_statuses is not None and
-                                     record['status'] in force_refresh_statuses)
+                                     record.status in force_refresh_statuses)
         if force_refresh_for_cluster or has_autostop or use_spot:
             record = _update_cluster_status(
                 cluster_name,
@@ -2350,7 +2350,7 @@ def refresh_cluster_status_handle(
         acquire_per_cluster_status_lock=acquire_per_cluster_status_lock)
     if record is None:
         return None, None
-    return record['status'], record['handle']
+    return record.status, record.handle
 
 
 # =====================================
@@ -2400,11 +2400,11 @@ def check_cluster_available(
     record = global_user_state.get_cluster_from_name(cluster_name)
     if dryrun:
         assert record is not None, cluster_name
-        return record['handle']
+        return record.handle
 
     previous_cluster_status = None
     if record is not None:
-        previous_cluster_status = record['status']
+        previous_cluster_status = record.status
 
     try:
         cluster_status, handle = refresh_cluster_status_handle(cluster_name)
@@ -2427,7 +2427,7 @@ def check_cluster_available(
         if record is None:
             cluster_status, handle = None, None
         else:
-            cluster_status, handle = record['status'], record['handle']
+            cluster_status, handle = record.status, record.handle
 
     bright = colorama.Style.BRIGHT
     reset = colorama.Style.RESET_ALL
@@ -2439,9 +2439,9 @@ def check_cluster_available(
                          'provider.')
             assert record is not None, previous_cluster_status
             actions = []
-            if record['handle'].launched_resources.use_spot:
+            if record.handle.launched_resources.use_spot:
                 actions.append('preempted')
-            if record['autostop'] > 0 and record['to_down']:
+            if record.autostop > 0 and record.to_down:
                 actions.append('autodowned')
             actions.append('manually terminated in console')
             if len(actions) > 1:
@@ -2512,7 +2512,7 @@ def get_clusters(
     refresh: bool,
     cloud_filter: CloudFilter = CloudFilter.CLOUDS_AND_DOCKER,
     cluster_names: Optional[Union[str, List[str]]] = None,
-) -> List[Dict[str, Any]]:
+) -> List[record_types.ClusterInfo]:
     """Returns a list of cached or optionally refreshed cluster records.
 
     Combs through the database (in ~/.sky/state.db) to get a list of records
@@ -2540,7 +2540,7 @@ def get_clusters(
     if not include_reserved:
         records = [
             record for record in records
-            if record['name'] not in SKY_RESERVED_CLUSTER_NAMES
+            if record.name not in SKY_RESERVED_CLUSTER_NAMES
         ]
 
     yellow = colorama.Fore.YELLOW
@@ -2554,7 +2554,7 @@ def get_clusters(
         not_exist_cluster_names = []
         for cluster_name in cluster_names:
             for record in records:
-                if record['name'] == cluster_name:
+                if record.name == cluster_name:
                     new_records.append(record)
                     break
             else:
@@ -2565,7 +2565,7 @@ def get_clusters(
         records = new_records
 
     def _is_local_cluster(record):
-        handle = record['handle']
+        handle = record.handle
         if isinstance(handle, backends.LocalDockerResourceHandle):
             return False
         cluster_resources = handle.launched_resources
@@ -2607,7 +2607,7 @@ def get_clusters(
         progress.update(task, advance=1)
         return record
 
-    cluster_names = [record['name'] for record in records]
+    cluster_names = [record.name for record in records]
     with progress:
         updated_records = subprocess_utils.run_in_parallel(
             _refresh_cluster, cluster_names)
@@ -2617,7 +2617,7 @@ def get_clusters(
     autodown_clusters, remaining_clusters, failed_clusters = [], [], []
     for i, record in enumerate(records):
         if updated_records[i] is None:
-            if record['to_down']:
+            if record.to_down:
                 autodown_clusters.append(cluster_names[i])
             else:
                 remaining_clusters.append(cluster_names[i])
