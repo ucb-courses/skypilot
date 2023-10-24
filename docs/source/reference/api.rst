@@ -134,6 +134,8 @@ Dataclasses
 .. autoclass:: sky.ClusterInfo
   :members:
 
+.. autoclass:: sky.JobInfo
+  :members:
 
 Enums
 -----------------
