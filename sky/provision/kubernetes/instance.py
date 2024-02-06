@@ -640,13 +640,8 @@ def get_cluster_info(
                 tags=pod.metadata.labels,
             )
         ]
-        if pod.metadata.labels[TAG_RAY_NODE_KIND] == 'head':
-            head_pod_name = pod_name
-            head_spec = pod.spec
-            assert head_spec is not None, pod
-            cpu_request = head_spec.containers[0].resources.requests['cpu']
-
-    assert cpu_request is not None, 'cpu_request should not be None'
+        if cpu_request is None and pod.spec is not None:
+            cpu_request = pod.spec.containers[0].resources.requests['cpu']
 
     ssh_user = 'sky'
     get_k8s_ssh_user_cmd = ['/bin/sh', '-c', ('echo $(whoami)')]

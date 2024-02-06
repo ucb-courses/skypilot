@@ -231,6 +231,7 @@ def start_ray_on_head_node(cluster_name: str, custom_resource: Optional[str],
 
     if cluster_info.custom_ray_options:
         for key, value in cluster_info.custom_ray_options.items():
+            assert value is not None, cluster_info
             ray_options += f' --{key}={value}'
 
     # Unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY to avoid using credentials
@@ -295,6 +296,7 @@ def start_ray_on_worker_nodes(cluster_name: str, no_restart: bool,
 
     if cluster_info.custom_ray_options:
         for key, value in cluster_info.custom_ray_options.items():
+            assert value is not None, cluster_info
             ray_options += f' --{key}={value}'
 
     # Unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY, see the comment in
