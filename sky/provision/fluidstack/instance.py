@@ -2,13 +2,21 @@
 import time
 from typing import Any, Dict, List, Optional
 
+from sky import authentication as auth
 from sky import sky_logging
 from sky import status_lib
 from sky.provision import common
 from sky.skylet.providers.fluidstack import fluidstack_utils as utils
+from sky.utils import command_runner
 from sky.utils import common_utils
+from sky.utils import subprocess_utils
 from sky.utils import ux_utils
 
+_GET_INTERNAL_IP_CMD = ('ip -4 -br addr show | grep UP | grep -Eo '
+                        r'"(10\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|'
+                        r'172\.(1[6-9]|2[0-9]|3[0-1]))\.(25[0-5]|'
+                        r'2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|'
+                        r'2[0-4][0-9]|[01]?[0-9][0-9]?)"')
 POLL_INTERVAL = 5
 
 logger = sky_logging.init_logger(__name__)
@@ -145,12 +153,16 @@ def terminate_instances(
     del provider_config  # unused
     instances = _filter_instances(cluster_name_on_cloud, None)
     for inst_id, inst in instances.items():
-        logger.info(f'Terminating instance {inst_id}: {inst}')
+        logger.debug(f'Terminating instance {inst_id}: {inst}')
         if worker_only and inst['hostname'].endswith('-head'):
             continue
         try:
             utils.FluidstackClient().delete(inst_id)
         except Exception as e:  # pylint: disable=broad-except
+            if (isinstance(e, utils.FluidstackAPIError) and
+                    'Machine is already terminated' in str(e)):
+                logger.debug(f'Instance {inst_id} is already terminated.')
+                continue
             with ux_utils.print_exception_no_traceback():
                 raise RuntimeError(
                     f'Failed to terminate instance {inst_id}: '
@@ -165,13 +177,31 @@ def get_cluster_info(
     del region, provider_config  # unused
     running_instances = _filter_instances(cluster_name_on_cloud, ['running'])
     instances: Dict[str, List[common.InstanceInfo]] = {}
+
+    def get_internal_ip(node_info: Dict[str, Any]) -> None:
+        runner = command_runner.SSHCommandRunner(
+            node_info['ip_address'],
+            ssh_user=node_info['capabilities']['default_user_name'],
+            ssh_private_key=auth.PRIVATE_SSH_KEY_PATH)
+        rc, stdout, stderr = runner.run(_GET_INTERNAL_IP_CMD,
+                                        require_outputs=True,
+                                        stream_logs=False)
+        subprocess_utils.handle_returncode(
+            rc,
+            _GET_INTERNAL_IP_CMD,
+            'Failed get obtain private IP from node',
+            stderr=stdout + stderr)
+        node_info['internal_ip'] = stdout.strip()
+
+    subprocess_utils.run_in_parallel(get_internal_ip,
+                                     list(running_instances.values()))
     head_instance_id = None
     for instance_id, instance_info in running_instances.items():
         instance_id = instance_info['id']
         instances[instance_id] = [
             common.InstanceInfo(
                 instance_id=instance_id,
-                internal_ip=instance_info['ip_address'],
+                internal_ip=instance_info['internal_ip'],
                 external_ip=instance_info['ip_address'],
                 ssh_port=instance_info['ssh_port'],
                 tags={},
@@ -179,11 +209,9 @@ def get_cluster_info(
         ]
         if instance_info['hostname'].endswith('-head'):
             head_instance_id = instance_id
-
-    return common.ClusterInfo(
-        instances=instances,
-        head_instance_id=head_instance_id,
-    )
+    return common.ClusterInfo(instances=instances,
+                              head_instance_id=head_instance_id,
+                              custom_ray_options={'use_external_ip': True})
 
 
 def query_instances(
