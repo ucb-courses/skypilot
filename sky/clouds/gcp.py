@@ -459,6 +459,8 @@ class GCP(clouds.Cloud):
                     # CUDA driver version 535.86.10, CUDA Library 12.2
                     image_id = 'skypilot:gpu-debian-11'
 
+        # Skydentity Hack - set image to ubuntu since debian doesn't support cloudinit
+        image_id = 'projects/deeplearning-platform-release/global/images/common-cpu-v20240128-ubuntu-2004-py310'
         if resources.image_id is not None and resources.extract_docker_image(
         ) is None:
             if None in resources.image_id:
