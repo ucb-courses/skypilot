@@ -688,7 +688,16 @@ class GCPComputeInstance(GCPInstance):
             config.pop('reservationAffinity', None)
 
         # Skydentity hack - remove the SSH key and instead insert cloud-init script
-        ssh_key = config['metadata'].pop('ssh-keys')
+        metadata_items = config['metadata']['items']
+
+        for i, item in enumerate(metadata_items):
+            if item['key'] == 'ssh-keys':
+                ssh_key = item['value']
+                break
+
+        if ssh_key.startswith('gcpuser:'):
+            ssh_key = ssh_key[len('gcpuser:'):]
+
 
         cloud_init_config = """#cloud-config
         users:
@@ -697,9 +706,21 @@ class GCPComputeInstance(GCPInstance):
             groups: sudo
             shell: /bin/bash
             ssh_authorized_keys:
-              - ssh-rsa AAAAB3Nza...yourkeyhere... user@domain
-        """
-        config['metadata']['user-data'] = cloud_init_config
+              - {0}
+        """.format(ssh_key)
+
+        logger.info('Cloud init config: %s', cloud_init_config)
+
+        metadata_items[i]['key'] = 'user-data'
+        metadata_items[i]['value'] = cloud_init_config
+
+        # Prevent the project from adding SSH keys to the instance
+        metadata_items.append({
+            'key': 'block-project-ssh-keys',
+            'value': 'true'
+        })
+
+        config['metadata']['items'] = metadata_items
 
         errors = cls._create_instances(names, project_id, zone, config,
                                        head_tag_needed)
