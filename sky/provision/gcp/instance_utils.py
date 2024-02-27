@@ -687,6 +687,20 @@ class GCPComputeInstance(GCPInstance):
                 head_tag_needed = head_tag_needed[reservation_count:]
             config.pop('reservationAffinity', None)
 
+        # Skydentity hack - remove the SSH key and instead insert cloud-init script
+        ssh_key = config['metadata'].pop('ssh-keys')
+
+        cloud_init_config = """#cloud-config
+        users:
+          - name: gcpuser
+            sudo: ['ALL=(ALL) NOPASSWD:ALL']
+            groups: sudo
+            shell: /bin/bash
+            ssh_authorized_keys:
+              - ssh-rsa AAAAB3Nza...yourkeyhere... user@domain
+        """
+        config['metadata']['user-data'] = cloud_init_config
+
         errors = cls._create_instances(names, project_id, zone, config,
                                        head_tag_needed)
 
