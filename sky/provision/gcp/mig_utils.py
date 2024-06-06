@@ -110,8 +110,7 @@ def create_managed_instance_group(project_id: str, zone: str, group_name: str,
 
 
 def resize_managed_instance_group(project_id: str, zone: str, group_name: str,
-                                  resize_by: int,
-                                  run_duration_seconds: int) -> dict:
+                                  resize_by: int, run_duration: int) -> dict:
     compute = gcp.build('compute',
                         'beta',
                         credentials=None,
@@ -124,7 +123,7 @@ def resize_managed_instance_group(project_id: str, zone: str, group_name: str,
             'name': group_name,
             'resizeBy': resize_by,
             'requestedRunDuration': {
-                'seconds': run_duration_seconds,
+                'seconds': run_duration,
             }
         }).execute()
     return operation
