@@ -1152,28 +1152,6 @@ class GCPManagedInstanceGroup(GCPComputeInstance):
             project_id, zone,
             mig_utils.get_instance_template_name(cluster_name))
 
-    # TODO(zhwu): We want to restart the instances with MIG instead of the
-    # normal instance start API to take advantage of DWS.
-    # @classmethod
-    # def start_instances(cls, cluster_name: str, project_id: str, zone: str,
-    #                     instances: List[str], labels: Dict[str,
-    #                                                        str]) -> List[str]:
-    #     del instances  # unused
-    #     potential_head_instances = cls.filter(
-    #         project_id,
-    #         zone,
-    #         label_filters={
-    #             constants.TAG_RAY_NODE_KIND: 'head',
-    #             constants.TAG_RAY_CLUSTER_NAME: cluster_name,
-    #         },
-    #         status_filters=cls.NEED_TO_TERMINATE_STATES)
-    #     mig_name = mig_utils.get_managed_instance_group_name(cluster_name)
-    #     mig_utils.start_managed_instance_group(project_id, zone, mig_name)
-    #     mig_utils.wait_for_managed_group_to_be_stable(project_id, zone,
-    #                                                   mig_name)
-    #     return cls._add_labels_and_find_head(cluster_name, project_id, zone,
-    #                                          labels, potential_head_instances)
-
     @classmethod
     def _add_labels_and_find_head(
             cls, cluster_name: str, project_id: str, zone: str,
