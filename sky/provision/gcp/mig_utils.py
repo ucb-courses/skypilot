@@ -148,8 +148,7 @@ def cancel_all_resize_request_for_mig(project_id: str, zone: str,
                     project=project_id,
                     zone=zone,
                     instanceGroupManager=group_name,
-                    resizeRequest=request['name'],
-                    requestId=request['id']).execute()
+                    resizeRequest=request['name']).execute()
             except gcp.http_error_exception() as e:
                 logger.warning('Failed to cancel resize request '
                                f'{request["id"]!r}: {e}')
