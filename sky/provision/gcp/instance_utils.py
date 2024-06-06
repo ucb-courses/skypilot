@@ -1074,8 +1074,6 @@ class GCPManagedInstanceGroup(GCPComputeInstance):
             constants.MANAGED_INSTANCE_GROUP_CONFIG]
         if count > 0:
             # Use resize to trigger DWS for creating VMs.
-            logger.debug(f'Resizing Managed instance group '
-                         f'{managed_instance_group_name!r} by {count}...')
             operation = mig_utils.resize_managed_instance_group(
                 project_id,
                 zone,
@@ -1110,6 +1108,7 @@ class GCPManagedInstanceGroup(GCPComputeInstance):
     @classmethod
     def _delete_instance_template(cls, project_id: str, zone: str,
                                   instance_template_name: str) -> None:
+        logger.debug(f'Deleting instance template {instance_template_name}...')
         region = zone.rpartition('-')[0]
         try:
             operation = cls.load_resource().regionInstanceTemplates().delete(
@@ -1130,6 +1129,7 @@ class GCPManagedInstanceGroup(GCPComputeInstance):
         mig_name = mig_utils.get_managed_instance_group_name(cluster_name)
         # Get all resize request of the MIG and cancel them.
         mig_utils.cancel_all_resize_request_for_mig(project_id, zone, mig_name)
+        logger.debug(f'Deleting MIG {mig_name!r} ...')
         try:
             operation = cls.load_resource().instanceGroupManagers().delete(
                 project=project_id, zone=zone,
