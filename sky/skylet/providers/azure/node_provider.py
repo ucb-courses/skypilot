@@ -16,10 +16,9 @@ from sky.skylet.providers.azure.config import (
     get_azure_sdk_function,
 )
 from sky.skylet import autostop_lib
-from sky.skylet.providers.command_runner import SkyDockerCommandRunner
+from sky.skylet.providers import command_runner
 from sky.provision import docker_utils
 
-from ray.autoscaler._private.command_runner import SSHCommandRunner
 from ray.autoscaler.node_provider import NodeProvider
 from ray.autoscaler.tags import (
     TAG_RAY_CLUSTER_NAME,
@@ -461,6 +460,6 @@ class AzureNodeProvider(NodeProvider):
                 docker_config["docker_login_config"] = docker_utils.DockerLoginConfig(
                     **self.provider_config["docker_login_config"]
                 )
-            return SkyDockerCommandRunner(docker_config, **common_args)
+            return command_runner.SkyDockerCommandRunner(docker_config, **common_args)
         else:
-            return SSHCommandRunner(**common_args)
+            return command_runner.SkyRetrySSHCommandRunner(**common_args)

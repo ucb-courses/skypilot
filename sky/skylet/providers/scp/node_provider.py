@@ -27,6 +27,8 @@ from ray.autoscaler.tags import TAG_RAY_USER_NODE_TYPE
 
 from sky.clouds.utils import scp_utils
 from sky.clouds.utils.scp_utils import SCPCreationFailError
+from sky.provision import docker_utils
+from sky.skylet.providers import command_runner
 from sky.skylet.providers.scp.config import ZoneConfig
 from sky.utils import common_utils
 
@@ -576,3 +578,32 @@ class SCPNodeProvider(NodeProvider):
             vm_info = self.scp_client.get_vm_info(vm_id)
             if vm_info["virtualServerState"] == "STOPPED":
                 break
+
+    def get_command_runner(
+        self,
+        log_prefix,
+        node_id,
+        auth_config,
+        cluster_name,
+        process_runner,
+        use_internal_ip,
+        docker_config=None,
+    ):
+        common_args = {
+            "log_prefix": log_prefix,
+            "node_id": node_id,
+            "provider": self,
+            "auth_config": auth_config,
+            "cluster_name": cluster_name,
+            "process_runner": process_runner,
+            "use_internal_ip": use_internal_ip,
+        }
+        if docker_config and docker_config["container_name"] != "":
+            if "docker_login_config" in self.provider_config:
+                docker_config[
+                    "docker_login_config"] = docker_utils.DockerLoginConfig(
+                        **self.provider_config["docker_login_config"])
+            return command_runner.SkyDockerCommandRunner(
+                docker_config, **common_args)
+        else:
+            return command_runner.SkyRetrySSHCommandRunner(**common_args)

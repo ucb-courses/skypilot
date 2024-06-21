@@ -1,17 +1,24 @@
 """Sky's DockerCommandRunner."""
 import json
 import os
+import subprocess
 import time
 from typing import Dict
 
 import click
 from ray.autoscaler._private.cli_logger import cli_logger
 from ray.autoscaler._private.command_runner import DockerCommandRunner
+from ray.autoscaler._private.command_runner import SSHCommandRunner
 from ray.autoscaler._private.docker import check_docker_running_cmd
 from ray.autoscaler.sdk import get_docker_host_mount_location
 
+from sky import sky_logging
 from sky.provision import docker_utils
 from sky.skylet import constants
+
+logger = sky_logging.init_logger(__name__)
+
+_MAX_RETRY = 60
 
 
 def docker_start_cmds(
@@ -360,3 +367,32 @@ class SkyDockerCommandRunner(DockerCommandRunner):
                         'your `setup_commands`.')
         self.initialized = True
         return docker_run_executed
+
+
+class SkyRetrySSHCommandRunner(SSHCommandRunner):
+    """A SSHCommandRunner that retries the command for connection failure."""
+
+    def _run_with_retry(self, cmd, *args, **kwargs):
+        """Run a command with retries for ssh."""
+        retry_cnt = 0
+        while retry_cnt < _MAX_RETRY:
+            try:
+                return super().run(cmd, *args, **kwargs)
+            except subprocess.CalledProcessError as e:
+                if e.returncode == 255:
+                    # Got network connection issue occur during setup. This
+                    # could happen when (1) the instance is initializing; (2) a
+                    # setup step requires a reboot, e.g. nvidia-driver
+                    # installation (happens for fluidstack). We should retry for
+                    # it.
+                    logger.info('Network connection issue during setup, this '
+                                'is likely due to the initialization or a '
+                                'reboot of the instance. Retrying setup in 1 '
+                                'seconds.')
+                    time.sleep(1)
+                    retry_cnt += 1
+                    continue
+                raise
+
+    def run(self, cmd, *args, **kwargs):
+        return self._run_with_retry(cmd, *args, **kwargs)

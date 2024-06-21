@@ -45,6 +45,7 @@ from ray.autoscaler.tags import (
 )
 
 from sky.adaptors import ibm
+from sky.skylet.providers import command_runner
 from sky.skylet.providers.ibm.utils import RAY_RECYCLABLE, get_logger
 from sky.skylet.providers.ibm.vpc_provider import IBMVPCProvider
 
@@ -953,3 +954,31 @@ class IBMVPCNodeProvider(NodeProvider):
     @staticmethod
     def bootstrap_config(cluster_config) -> Dict[str, Any]:
         return cluster_config
+
+    def get_command_runner(
+        self,
+        log_prefix,
+        node_id,
+        auth_config,
+        cluster_name,
+        process_runner,
+        use_internal_ip,
+        docker_config=None,
+    ):
+        common_args = {
+            "log_prefix": log_prefix,
+            "node_id": node_id,
+            "provider": self,
+            "auth_config": auth_config,
+            "cluster_name": cluster_name,
+            "process_runner": process_runner,
+            "use_internal_ip": use_internal_ip,
+        }
+        if docker_config and docker_config["container_name"] != "":
+            if "docker_login_config" in self.provider_config:
+                docker_config["docker_login_config"] = docker_utils.DockerLoginConfig(
+                    **self.provider_config["docker_login_config"]
+                )
+            return command_runner.SkyDockerCommandRunner(docker_config, **common_args)
+        else:
+            return command_runner.SkyRetrySSHCommandRunner(**common_args)

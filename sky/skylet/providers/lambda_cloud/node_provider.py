@@ -16,7 +16,9 @@ from ray.autoscaler.tags import TAG_RAY_USER_NODE_TYPE
 
 from sky import authentication as auth
 from sky.clouds.utils import lambda_utils
-from sky.utils import command_runner
+from sky.provision import docker_utils
+from sky.skylet.providers import command_runner
+from sky.utils import command_runner as sky_command_runner
 from sky.utils import common_utils
 from sky.utils import subprocess_utils
 from sky.utils import ux_utils
@@ -155,7 +157,7 @@ class LambdaNodeProvider(NodeProvider):
             if node['external_ip'] is None or node['status'] != 'active':
                 node['internal_ip'] = None
                 return
-            runner = command_runner.SSHCommandRunner(
+            runner = sky_command_runner.SSHCommandRunner(
                 node=(node['external_ip'], 22),
                 ssh_user='ubuntu',
                 ssh_private_key=self.ssh_key_path)
@@ -275,7 +277,8 @@ class LambdaNodeProvider(NodeProvider):
         # Lambda launch api only supports launching one node at a time,
         # so we do a loop. Remove loop when launch api allows quantity > 1
         booting_list = []
-        for _ in range(count):
+        for i in range(count):
+            logger.info(f'Creating node: {i}/{count}')
             vm_id = self.lambda_client.create_instances(
                 instance_type=instance_type,
                 region=region,
@@ -318,3 +321,32 @@ class LambdaNodeProvider(NodeProvider):
         if node_id in self.cached_nodes:
             return self.cached_nodes[node_id]
         return self._get_node(node_id=node_id)
+
+    def get_command_runner(
+        self,
+        log_prefix,
+        node_id,
+        auth_config,
+        cluster_name,
+        process_runner,
+        use_internal_ip,
+        docker_config=None,
+    ):
+        common_args = {
+            "log_prefix": log_prefix,
+            "node_id": node_id,
+            "provider": self,
+            "auth_config": auth_config,
+            "cluster_name": cluster_name,
+            "process_runner": process_runner,
+            "use_internal_ip": use_internal_ip,
+        }
+        if docker_config and docker_config["container_name"] != "":
+            if "docker_login_config" in self.provider_config:
+                docker_config[
+                    "docker_login_config"] = docker_utils.DockerLoginConfig(
+                        **self.provider_config["docker_login_config"])
+            return command_runner.SkyDockerCommandRunner(
+                docker_config, **common_args)
+        else:
+            return command_runner.SkyRetrySSHCommandRunner(**common_args)

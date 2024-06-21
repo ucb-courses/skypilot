@@ -24,6 +24,8 @@ from ray.autoscaler.tags import TAG_RAY_USER_NODE_TYPE
 
 from sky.adaptors import oci as oci_adaptor
 from sky.clouds.utils import oci_utils
+from sky.provision import docker_utils
+from sky.skylet.providers import command_runner
 from sky.skylet.providers.oci import utils
 from sky.skylet.providers.oci.query_helper import oci_query_helper
 
@@ -486,3 +488,32 @@ class OCINodeProvider(NodeProvider):
         """Return a list of running node ids filtered by the specified tags dict."""
         nodes = self._get_filtered_nodes(tag_filters=tag_filters)
         return [k for k, v in nodes.items() if v["status"] == "RUNNING"]
+
+    def get_command_runner(
+        self,
+        log_prefix,
+        node_id,
+        auth_config,
+        cluster_name,
+        process_runner,
+        use_internal_ip,
+        docker_config=None,
+    ):
+        common_args = {
+            "log_prefix": log_prefix,
+            "node_id": node_id,
+            "provider": self,
+            "auth_config": auth_config,
+            "cluster_name": cluster_name,
+            "process_runner": process_runner,
+            "use_internal_ip": use_internal_ip,
+        }
+        if docker_config and docker_config["container_name"] != "":
+            if "docker_login_config" in self.provider_config:
+                docker_config[
+                    "docker_login_config"] = docker_utils.DockerLoginConfig(
+                        **self.provider_config["docker_login_config"])
+            return command_runner.SkyDockerCommandRunner(
+                docker_config, **common_args)
+        else:
+            return command_runner.SkyRetrySSHCommandRunner(**common_args)
