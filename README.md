@@ -207,3 +207,5 @@ For general discussions, join us on the [SkyPilot Slack](http://slack.skypilot.c
 
 ## Contributing
 We welcome all contributions to the project! See [CONTRIBUTING](CONTRIBUTING.md) for how to get involved.
+
+[first commit](https://github.com/ucb-courses/skypilot/commits/master/?after=68723df97c7c981887ba9100c510aca953f45c11+2134)
